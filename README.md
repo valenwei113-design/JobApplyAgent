@@ -65,7 +65,6 @@
 |------|------|------|
 | country | TEXT | 国家 |
 | visa | TEXT | 签证/工作许可类型 |
-| monthly_salary | TEXT | 月薪门槛 |
 | annual_salary | TEXT | 年薪门槛 |
 | permanent_residence | TEXT | 永久居留申请年限 |
 
@@ -139,6 +138,11 @@ job-search-track-agent/
 ├── job-agent.html     # 前端页面（聊天 + 实时图表）
 ├── import_jobs.py     # 数据导入脚本（CSV → PostgreSQL）
 └── .gitignore
+
+Desktop/Job Track Agent/           # 数据文件目录（不上传 GitHub）
+├── job_applications.csv           # 求职投递记录
+├── work_permits.csv               # 工作许可数据
+└── 更新数据库.command              # 一键同步脚本
 ```
 
 ---
@@ -146,7 +150,7 @@ job-search-track-agent/
 ## 九、下一步计划
 
 - [ ] 部署到云服务器（公网可访问）
-- [ ] 数据库自动更新（Numbers 更新后一键同步）
+- [x] 数据库一键更新（双击 `更新数据库.command` 同步最新 CSV）
 - [ ] 支持更复杂的查询（多表 JOIN、时间范围筛选）
 - [ ] 增加投递趋势折线图（按月统计）
 
