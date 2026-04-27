@@ -1,10 +1,13 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 import psycopg2
 import psycopg2.extras
 import re
+import logging
+import traceback
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
@@ -14,6 +17,12 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logging.basicConfig(
+    filename=os.path.join(os.path.dirname(__file__), "logs/error.log"),
+    level=logging.ERROR,
+    format="%(asctime)s %(levelname)s %(message)s"
+)
 
 DEEPSEEK_API_KEY = os.environ["DEEPSEEK_API_KEY"]
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
@@ -84,6 +93,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logging.error(f"{request.method} {request.url.path}\n{traceback.format_exc()}")
+    return JSONResponse(status_code=500, content={"detail": "服务器内部错误，请稍后重试"})
+
 DB_CONFIG = {
     "host": "localhost",
     "port": 5432,
@@ -95,6 +109,7 @@ DB_CONFIG = {
 SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_DAYS = 30
+CHAT_DAILY_LIMIT = 50
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer = HTTPBearer()
@@ -105,9 +120,6 @@ BLOCKED = re.compile(
 )
 
 # ── Models ──
-
-class QueryRequest(BaseModel):
-    sql: str
 
 class ApplicationRequest(BaseModel):
     company: str
@@ -121,6 +133,7 @@ class ApplicationRequest(BaseModel):
 class AuthRequest(BaseModel):
     email: str
     password: str
+    invite_code: Optional[str] = None
 
 class ResetPasswordRequest(BaseModel):
     new_password: str
@@ -172,19 +185,38 @@ def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)) 
 
 @app.post("/auth/register")
 def register(req: AuthRequest):
+    if not req.invite_code:
+        raise HTTPException(status_code=400, detail="邀请码不能为空")
     conn = get_db()
     cur = conn.cursor()
     try:
+        # 验证邀请码
+        cur.execute(
+            "SELECT id FROM invite_codes WHERE code=%s AND is_active=TRUE AND used_by IS NULL",
+            (req.invite_code,)
+        )
+        code_row = cur.fetchone()
+        if not code_row:
+            raise HTTPException(status_code=400, detail="邀请码无效或已被使用")
+
         cur.execute("SELECT id FROM users WHERE email=%s", (req.email,))
         if cur.fetchone():
             raise HTTPException(status_code=400, detail="Email already registered")
+
         cur.execute(
             "INSERT INTO users (email, password_hash) VALUES (%s, %s) RETURNING id, is_admin",
             (req.email, hash_password(req.password))
         )
         row = cur.fetchone()
+        user_id = row[0]
+
+        # 标记邀请码已使用
+        cur.execute(
+            "UPDATE invite_codes SET used_by=%s, used_at=NOW() WHERE id=%s",
+            (user_id, code_row[0])
+        )
         conn.commit()
-        return {"token": create_token(row[0], row[1]), "email": req.email, "is_admin": row[1]}
+        return {"token": create_token(user_id, row[1]), "email": req.email, "is_admin": row[1]}
     finally:
         cur.close(); conn.close()
 
@@ -359,10 +391,74 @@ def admin_reset_password(uid: int, req: ResetPasswordRequest, admin_id: int = De
     finally:
         cur.close(); conn.close()
 
+# ── Admin: invite codes ──
+
+@app.post("/admin/invite-codes")
+def admin_create_invite(admin_id: int = Depends(get_admin_user)):
+    import secrets as _secrets
+    code = _secrets.token_urlsafe(8)
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "INSERT INTO invite_codes (code, created_by) VALUES (%s, %s) RETURNING id, code, created_at",
+            (code, admin_id)
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return {"id": row[0], "code": row[1], "created_at": row[2].isoformat()}
+    finally:
+        cur.close(); conn.close()
+
+@app.get("/admin/invite-codes")
+def admin_list_invites(admin_id: int = Depends(get_admin_user)):
+    conn = get_db()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT ic.id, ic.code, ic.is_active, ic.created_at,
+               ic.used_at, u.email as used_by_email
+        FROM invite_codes ic
+        LEFT JOIN users u ON u.id = ic.used_by
+        ORDER BY ic.created_at DESC
+    """)
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close(); conn.close()
+    for r in rows:
+        if r['created_at']: r['created_at'] = r['created_at'].isoformat()
+        if r['used_at']:    r['used_at']    = r['used_at'].isoformat()
+    return rows
+
+@app.delete("/admin/invite-codes/{code_id}")
+def admin_revoke_invite(code_id: int, admin_id: int = Depends(get_admin_user)):
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        cur.execute("UPDATE invite_codes SET is_active=FALSE WHERE id=%s AND used_by IS NULL", (code_id,))
+        conn.commit()
+        return {"success": True}
+    finally:
+        cur.close(); conn.close()
+
 # ── Chat endpoint ──
 
 @app.post("/chat")
 def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
+    # 每日调用限制
+    today = datetime.utcnow().date()
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO chat_usage (user_id, date, count) VALUES (%s, %s, 1) "
+        "ON CONFLICT (user_id, date) DO UPDATE SET count = chat_usage.count + 1 "
+        "RETURNING count",
+        (user_id, today)
+    )
+    usage = cur.fetchone()[0]
+    conn.commit()
+    cur.close(); conn.close()
+    if usage > CHAT_DAILY_LIMIT:
+        raise HTTPException(status_code=429, detail=f"今日提问已达上限（{CHAT_DAILY_LIMIT} 次），明天再来吧")
+
     client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 
     # Step 1: NL → SQL
@@ -410,20 +506,6 @@ def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
     return {"answer": answer, "sql": sql_or_reject}
 
 # ── Public endpoints ──
-
-@app.post("/query")
-async def run_query(req: QueryRequest):
-    if BLOCKED.search(req.sql):
-        raise HTTPException(status_code=400, detail="Only SELECT queries are allowed.")
-    try:
-        conn = get_db()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute(req.sql)
-        rows = cur.fetchall()
-        cur.close(); conn.close()
-        return {"result": [dict(r) for r in rows], "count": len(rows)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 def health():
