@@ -1,4 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Request
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -84,13 +87,19 @@ EXPLAIN_SYSTEM_PROMPT = """你是一个求职数据分析助手，根据数据�
 - 不要重复展示原始数据，用自然语言总结
 - 回答控制在3-5句话以内"""
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+_origins_env = os.environ.get("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS = [o.strip() for o in _origins_env.split(",") if o.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 @app.exception_handler(Exception)
@@ -99,11 +108,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content={"detail": "服务器内部错误，请稍后重试"})
 
 DB_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "user": "postgres",
-    "password": "difyai123456",
-    "database": "jobsdb"
+    "host": os.environ.get("DB_HOST", "localhost"),
+    "port": int(os.environ.get("DB_PORT", 5432)),
+    "user": os.environ.get("DB_USER", "postgres"),
+    "password": os.environ["DB_PASSWORD"],
+    "database": os.environ.get("DB_NAME", "jobsdb"),
 }
 
 SECRET_KEY = os.environ["SECRET_KEY"]
@@ -118,6 +127,23 @@ BLOCKED = re.compile(
     r"\b(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE)\b",
     re.IGNORECASE
 )
+ALLOWED_TABLES = {"job_applications", "work_permits"}
+_TABLE_REF = re.compile(r"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)", re.IGNORECASE)
+
+def validate_chat_sql(sql: str, user_id: int) -> str | None:
+    """Return an error string if the SQL is unsafe, None if it passes."""
+    if ";" in sql:
+        return "不允许多语句查询"
+    if BLOCKED.search(sql):
+        return "包含不允许的操作"
+    referenced = {m.group(1).lower() for m in _TABLE_REF.finditer(sql)}
+    disallowed = referenced - ALLOWED_TABLES
+    if disallowed:
+        return f"不允许查询的表：{disallowed}"
+    if "job_applications" in referenced:
+        if not re.search(rf"\buser_id\s*=\s*{user_id}\b", sql):
+            return "缺少 user_id 过滤条件"
+    return None
 
 # ── Models ──
 
@@ -184,7 +210,8 @@ def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(bearer)) 
 # ── Auth endpoints ──
 
 @app.post("/auth/register")
-def register(req: AuthRequest):
+@limiter.limit("5/hour")
+def register(request: Request, req: AuthRequest):
     if not req.invite_code:
         raise HTTPException(status_code=400, detail="邀请码不能为空")
     conn = get_db()
@@ -221,7 +248,8 @@ def register(req: AuthRequest):
         cur.close(); conn.close()
 
 @app.post("/auth/login")
-def login(req: AuthRequest):
+@limiter.limit("10/minute")
+def login(request: Request, req: AuthRequest):
     conn = get_db()
     cur = conn.cursor()
     try:
@@ -479,11 +507,13 @@ def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
         return {"answer": sql_or_reject, "sql": None}
 
     # Step 2: 执行 SQL（安全检查）
-    if BLOCKED.search(sql_or_reject):
-        return {"answer": "生成的查询包含不允许的操作，已拦截。", "sql": None}
+    err = validate_chat_sql(sql_or_reject, user_id)
+    if err:
+        return {"answer": f"生成的查询已被拦截：{err}", "sql": None}
     try:
         conn = get_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SET LOCAL statement_timeout = '5000'")  # 5s 超时
         cur.execute(sql_or_reject)
         rows = [dict(r) for r in cur.fetchall()]
         cur.close(); conn.close()
