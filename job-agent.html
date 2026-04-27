@@ -117,8 +117,8 @@
       border-radius: 8px; padding: 10px;
     }
     .chart-block canvas { max-height: 120px; }
-    .chart-block.countries-block { height: 260px; }
-    .chart-block.countries-block canvas { max-height: 260px; }
+    .chart-block.countries-block { height: 160px; }
+    .chart-block.countries-block canvas { max-height: 160px; }
 
     /* User info in sidebar */
     .user-row {
@@ -197,9 +197,65 @@
       opacity: 0; pointer-events: none;
       transform: translateY(6px);
     }
-
-    .chat-iframe-wrap { flex: 1; overflow: hidden; }
-    .chat-iframe-wrap iframe { width: 100%; height: 100%; border: none; }
+    .chat-topbar {
+      padding: 0 16px; height: 44px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .chat-topbar-title { font-size: 13px; font-weight: 600; color: #111827; }
+    .chat-topbar-actions { display: flex; gap: 6px; }
+    .chat-icon-btn {
+      width: 26px; height: 26px; border-radius: 5px; border: none;
+      background: transparent; cursor: pointer; font-size: 13px;
+      color: #9ca3af; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+    .chat-icon-btn:hover { background: #f3f4f6; color: #6b7280; }
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .chat-bubble-wrap { display: flex; flex-direction: column; gap: 3px; }
+    .chat-bubble-wrap.user { align-items: flex-end; }
+    .chat-bubble-wrap.ai   { align-items: flex-start; }
+    .chat-bubble {
+      max-width: 75%; padding: 10px 14px;
+      border-radius: 12px; font-size: 13px; line-height: 1.6;
+    }
+    .chat-bubble.user { background: linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border-bottom-right-radius:4px; }
+    .chat-bubble.ai   { background: #f3f4f6; color:#111827; border-bottom-left-radius:4px; }
+    .chat-bubble.thinking { color: #9ca3af; font-style: italic; }
+    .chat-input-area {
+      padding: 12px 16px; border-top: 1px solid #e5e7eb;
+      display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0;
+    }
+    .chat-input {
+      flex: 1; padding: 9px 13px; border: 1px solid #e5e7eb;
+      border-radius: 8px; font-size: 13px; font-family: inherit;
+      resize: none; outline: none; max-height: 120px; line-height: 1.5;
+      transition: border-color 0.15s;
+    }
+    .chat-input:focus { border-color: #6366f1; }
+    .chat-send-btn {
+      padding: 9px 16px; background: linear-gradient(135deg,#6366f1,#8b5cf6);
+      color: #fff; border: none; border-radius: 8px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: opacity 0.15s; flex-shrink: 0;
+    }
+    .chat-send-btn:hover { opacity: 0.9; }
+    .chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .chat-empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px;
+      color: #9ca3af; font-size: 13px;
+    }
+    .chat-empty-icon { font-size: 32px; }
+    .chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 8px; }
+    .chat-suggestion {
+      padding: 5px 11px; border: 1px solid #e5e7eb; border-radius: 20px;
+      font-size: 12px; color: #6b7280; cursor: pointer; background: #fff;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .chat-suggestion:hover { border-color: #6366f1; color: #6366f1; }
 
     /* Ask AI toggle button */
     .ask-ai-btn {
@@ -242,6 +298,68 @@
       font-weight: 600; color: #fff; cursor: pointer;
     }
     .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* ── Admin panel ── */
+    #adminPanel {
+      position: fixed; inset: 0; z-index: 150;
+      background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #adminPanel.hidden { display: none; }
+    .admin-box {
+      background: #fff; border-radius: 14px;
+      width: 700px; max-width: 96vw; max-height: 85vh;
+      display: flex; flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+      overflow: hidden;
+    }
+    .admin-header {
+      padding: 16px 22px; border-bottom: 1px solid #e5e7eb;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .admin-header h2 { font-size: 15px; font-weight: 700; color: #111827; }
+    .admin-close {
+      width: 26px; height: 26px; border-radius: 6px; border: none;
+      background: transparent; cursor: pointer; font-size: 14px;
+      color: #9ca3af; display: flex; align-items: center; justify-content: center;
+    }
+    .admin-close:hover { background: #f3f4f6; color: #6b7280; }
+    .admin-body { overflow-y: auto; padding: 16px 22px; flex: 1; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .admin-table th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 0 10px 10px;
+    }
+    .admin-table td { padding: 10px; border-top: 1px solid #f3f4f6; vertical-align: middle; }
+    .admin-table tr:hover td { background: #fafafa; }
+    .admin-badge-admin { background: #ede9fe; color: #7c3aed; font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+    .admin-badge-user  { background: #f3f4f6; color: #6b7280; font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+    .admin-action-btn {
+      font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid #e5e7eb;
+      background: #fff; cursor: pointer; color: #374151; margin-right: 4px;
+      transition: background 0.15s;
+    }
+    .admin-action-btn:hover { background: #f3f4f6; }
+    .admin-action-btn.danger { color: #dc2626; border-color: #fecaca; }
+    .admin-action-btn.danger:hover { background: #fee2e2; }
+    .reset-pw-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+    .reset-pw-input {
+      font-size: 12px; padding: 4px 8px; border: 1px solid #e5e7eb;
+      border-radius: 5px; outline: none; width: 130px;
+    }
+    .reset-pw-input:focus { border-color: #6366f1; }
+
+    /* Admin button in sidebar */
+    .admin-btn {
+      width: 100%; padding: 8px 10px;
+      background: #ede9fe; color: #7c3aed;
+      border: 1px solid #ddd6fe; border-radius: 8px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      text-align: left; transition: background 0.15s;
+    }
+    .admin-btn:hover { background: #ddd6fe; }
 
     @media (max-width: 768px) { .sidebar { display: none; } }
   </style>
@@ -296,6 +414,7 @@
       </div>
 
       <button class="add-btn" onclick="toggleChat()">💬 Ask AI</button>
+      <button class="admin-btn" id="adminEntrance" onclick="openAdmin()" style="display:none">⚙️ 用户管理</button>
 
       <div class="divider"></div>
 
@@ -321,7 +440,7 @@
       </div>
 
       <div>
-        <div class="section-title">Top Countries</div>
+        <div class="section-title">Top Locations</div>
         <div class="chart-block countries-block"><canvas id="chartCountries"></canvas></div>
       </div>
 
@@ -351,13 +470,63 @@
 
       <!-- Chat overlay -->
       <aside class="chat-sidebar hidden" id="chatSidebar">
-        <div class="chat-iframe-wrap">
-          <iframe id="chatIframe" src="http://localhost/chatbot/aPeOSTemhgI3UTkK" allow="microphone"></iframe>
+        <div class="chat-topbar">
+          <span class="chat-topbar-title">💬 Ask AI</span>
+          <div class="chat-topbar-actions">
+            <button class="chat-icon-btn" onclick="clearChat()" title="清空对话">↺</button>
+            <button class="chat-icon-btn" onclick="toggleChat()" title="关闭">✕</button>
+          </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-empty" id="chatEmpty">
+            <div class="chat-empty-icon">🔍</div>
+            <div>用自然语言查询你的求职数据</div>
+            <div class="chat-suggestions">
+              <button class="chat-suggestion" onclick="sendSuggestion(this)">我总共投了多少家公司？</button>
+              <button class="chat-suggestion" onclick="sendSuggestion(this)">哪个地点投递最多？</button>
+              <button class="chat-suggestion" onclick="sendSuggestion(this)">有多少家公司没有回复？</button>
+              <button class="chat-suggestion" onclick="sendSuggestion(this)">Remote和Onsite各投了多少？</button>
+            </div>
+          </div>
+        </div>
+        <div class="chat-input-area">
+          <textarea class="chat-input" id="chatInput" rows="1"
+            placeholder="输入问题，例如：最近投了哪些公司？"
+            onkeydown="handleChatKey(event)"
+            oninput="autoResize(this)"></textarea>
+          <button class="chat-send-btn" id="chatSendBtn" onclick="sendChat()">发送</button>
         </div>
       </aside>
     </main>
 
   </div><!-- /#appWrapper -->
+
+  <!-- Admin Panel -->
+  <div id="adminPanel" class="hidden">
+    <div class="admin-box">
+      <div class="admin-header">
+        <h2>⚙️ 用户管理</h2>
+        <button class="admin-close" onclick="closeAdmin()">✕</button>
+      </div>
+      <div class="admin-body">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>邮箱</th>
+              <th>角色</th>
+              <th>申请数</th>
+              <th>注册时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="adminTableBody">
+            <tr><td colspan="6" style="color:#9ca3af;text-align:center;padding:24px">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
   <!-- Application Modal -->
   <div class="modal-overlay" id="modalOverlay">
@@ -381,10 +550,12 @@
       </div>
       <div class="form-row">
         <label>工作类型</label>
-        <select id="f-worktype" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:7px;font-size:13px;color:#111827;outline:none;background:#fff;">
-          <option value="Remote">Remote</option>
-          <option value="Onsite">Onsite</option>
-        </select>
+        <input id="f-worktype" type="text" list="worktype-options" placeholder="Remote / Onsite / Hybrid...">
+        <datalist id="worktype-options">
+          <option value="Remote">
+          <option value="Onsite">
+          <option value="Hybrid">
+        </datalist>
       </div>
       <div class="form-row">
         <label>职位链接</label>
@@ -392,10 +563,14 @@
       </div>
       <div class="form-row">
         <label>反馈</label>
-        <select id="f-feedback" style="padding:9px 12px;border:1px solid #e5e7eb;border-radius:7px;font-size:13px;color:#111827;outline:none;background:#fff;">
-          <option value="">No Response</option>
-          <option value="Fail">Rejected</option>
-        </select>
+        <input id="f-feedback" type="text" list="feedback-options" placeholder="No Response / Fail / Offer...">
+        <datalist id="feedback-options">
+          <option value="">
+          <option value="Fail">
+          <option value="Offer">
+          <option value="Interview">
+          <option value="Online Assessment">
+        </datalist>
       </div>
       <div class="form-actions">
         <button class="btn-cancel" onclick="closeModal()">取消</button>
@@ -416,6 +591,15 @@ function authHeader() {
   return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' };
 }
 
+function isAdmin() {
+  try {
+    const token = getToken();
+    if (!token) return false;
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return !!payload.adm;
+  } catch { return false; }
+}
+
 function setSession(token, email) {
   localStorage.setItem('jwt_token', token);
   localStorage.setItem('user_email', email);
@@ -430,6 +614,7 @@ function showApp() {
   document.getElementById('authScreen').classList.add('hidden');
   document.getElementById('appWrapper').classList.remove('hidden');
   document.getElementById('userEmail').textContent = getEmail() || '—';
+  document.getElementById('adminEntrance').style.display = isAdmin() ? 'block' : 'none';
   loadAll();
 }
 
@@ -609,6 +794,87 @@ function toggleChat() {
   document.getElementById('chatSidebar').classList.toggle('hidden');
 }
 
+// ── Chat logic ──
+
+let chatHistory = [];
+
+function clearChat() {
+  chatHistory = [];
+  const msgs = document.getElementById('chatMessages');
+  msgs.innerHTML = '';
+  document.getElementById('chatEmpty').style.display = 'flex';
+  msgs.appendChild(document.getElementById('chatEmpty'));
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+}
+
+function sendSuggestion(btn) {
+  document.getElementById('chatInput').value = btn.textContent;
+  sendChat();
+}
+
+function appendBubble(role, text) {
+  const empty = document.getElementById('chatEmpty');
+  if (empty) empty.style.display = 'none';
+
+  const wrap = document.createElement('div');
+  wrap.className = `chat-bubble-wrap ${role}`;
+  const bubble = document.createElement('div');
+  bubble.className = `chat-bubble ${role}`;
+  bubble.textContent = text;
+  wrap.appendChild(bubble);
+  document.getElementById('chatMessages').appendChild(wrap);
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  return bubble;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const message = input.value.trim();
+  if (!message) return;
+
+  const btn = document.getElementById('chatSendBtn');
+  btn.disabled = true;
+  input.value = '';
+  input.style.height = 'auto';
+
+  appendBubble('user', message);
+  const thinkingBubble = appendBubble('ai', '思考中...');
+  thinkingBubble.classList.add('thinking');
+
+  try {
+    const res = await apiFetch('/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, history: chatHistory })
+    });
+    const data = res ? await res.json() : null;
+    const answer = data?.answer || '请求失败，请重试';
+
+    thinkingBubble.classList.remove('thinking');
+    thinkingBubble.textContent = answer;
+
+    chatHistory.push({ role: 'user', content: message });
+    chatHistory.push({ role: 'assistant', content: answer });
+    if (chatHistory.length > 12) chatHistory = chatHistory.slice(-12);
+  } catch {
+    thinkingBubble.classList.remove('thinking');
+    thinkingBubble.textContent = '网络错误，请重试';
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
 let editingId = null;
 
 function openModal() {
@@ -616,7 +882,7 @@ function openModal() {
   document.getElementById('modalTitle').textContent = '新增申请记录';
   document.getElementById('btnSave').textContent = '保存';
   ['f-company','f-position','f-location','f-link','f-feedback','f-worktype']
-    .forEach(id => document.getElementById(id).value = '');
+    .forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('f-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -670,6 +936,90 @@ async function saveApplication() {
     loadStats();
   } else {
     alert('保存失败，请重试');
+  }
+}
+
+// ── Admin ──
+
+async function openAdmin() {
+  document.getElementById('adminPanel').classList.remove('hidden');
+  await refreshAdminTable();
+}
+
+function closeAdmin() {
+  document.getElementById('adminPanel').classList.add('hidden');
+}
+
+async function refreshAdminTable() {
+  const res = await apiFetch('/admin/users');
+  if (!res) return;
+  const users = await res.json();
+  const tbody = document.getElementById('adminTableBody');
+  if (users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:#9ca3af;text-align:center;padding:24px">暂无用户</td></tr>';
+    return;
+  }
+  const myEmail = getEmail();
+  tbody.innerHTML = users.map(u => {
+    const isSelf = u.email === myEmail;
+    const date = u.created_at ? u.created_at.slice(0,10) : '—';
+    const roleBadge = u.is_admin
+      ? '<span class="admin-badge-admin">Admin</span>'
+      : '<span class="admin-badge-user">User</span>';
+    const toggleBtn = isSelf ? '' :
+      `<button class="admin-action-btn" onclick="toggleAdmin(${u.id})">${u.is_admin ? '取消管理员' : '设为管理员'}</button>`;
+    const deleteBtn = isSelf ? '' :
+      `<button class="admin-action-btn danger" onclick="deleteUser(${u.id}, '${u.email}')">删除</button>`;
+    return `
+      <tr id="user-row-${u.id}">
+        <td style="color:#9ca3af">${u.id}</td>
+        <td style="font-weight:500">${u.email}${isSelf ? ' <span style="font-size:10px;color:#9ca3af">(我)</span>' : ''}</td>
+        <td>${roleBadge}</td>
+        <td>${u.app_count}</td>
+        <td style="color:#9ca3af">${date}</td>
+        <td>
+          ${toggleBtn}
+          ${deleteBtn}
+          ${isSelf ? '<span style="font-size:11px;color:#d1d5db">—</span>' : ''}
+          <div class="reset-pw-row" id="pw-row-${u.id}" style="display:none">
+            <input class="reset-pw-input" id="pw-input-${u.id}" type="password" placeholder="新密码">
+            <button class="admin-action-btn" onclick="confirmResetPw(${u.id})">确认</button>
+            <button class="admin-action-btn" onclick="cancelResetPw(${u.id})">取消</button>
+          </div>
+          ${isSelf ? '' : `<button class="admin-action-btn" style="margin-top:4px" onclick="showResetPw(${u.id})">重置密码</button>`}
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+async function toggleAdmin(uid) {
+  const res = await apiFetch(`/admin/users/${uid}/toggle-admin`, { method: 'PATCH' });
+  if (res && res.ok) await refreshAdminTable();
+}
+
+async function deleteUser(uid, email) {
+  if (!confirm(`确认删除用户 ${email}？\n该用户的所有申请记录也会一并删除。`)) return;
+  const res = await apiFetch(`/admin/users/${uid}`, { method: 'DELETE' });
+  if (res && res.ok) await refreshAdminTable();
+}
+
+function showResetPw(uid) {
+  document.getElementById(`pw-row-${uid}`).style.display = 'flex';
+}
+function cancelResetPw(uid) {
+  document.getElementById(`pw-row-${uid}`).style.display = 'none';
+  document.getElementById(`pw-input-${uid}`).value = '';
+}
+async function confirmResetPw(uid) {
+  const pw = document.getElementById(`pw-input-${uid}`).value.trim();
+  if (!pw || pw.length < 6) { alert('密码至少 6 位'); return; }
+  const res = await apiFetch(`/admin/users/${uid}/reset-password`, {
+    method: 'PATCH',
+    body: JSON.stringify({ new_password: pw })
+  });
+  if (res && res.ok) {
+    cancelResetPw(uid);
+    alert('密码已重置');
   }
 }
 

@@ -137,18 +137,21 @@ job-search-track-agent/
 
 ```bash
 # 0. 安装依赖（首次）
-pip3 install fastapi uvicorn psycopg2-binary passlib "bcrypt==4.0.1" python-jose
+pip3 install fastapi uvicorn psycopg2-binary passlib "bcrypt==4.0.1" python-jose openai python-dotenv
 
-# 1. 启动 Dify（Docker）
-cd ~/dify/docker && docker compose up -d
+# 1. 进入项目目录
+cd ~/jobtrack
 
-# 2. 启动 FastAPI
+# 2. 启动 PostgreSQL（Dify Docker，如果数据库在 Dify 容器里）
+cd ~/dify/docker && docker compose up -d && cd ~/jobtrack
+
+# 3. 启动 FastAPI
 python3 -m uvicorn db_api:app --host 0.0.0.0 --port 8000 &
 
-# 3. 启动前端服务
+# 4. 启动前端服务
 python3 -m http.server 9090
 
-# 4. 打开页面
+# 5. 打开页面
 open http://localhost:9090/job-agent.html
 ```
 
