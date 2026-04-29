@@ -48,8 +48,9 @@ SQL_SYSTEM_PROMPT = """你是一个求职数据分析助手，专门帮助用户
 - 不得生成任何 SQL 语句
 - 不得调用自身知识直接回答问题
 - 不得尝试用任何方式帮助用户完成与求职数据无关的请求
-- 只输出以下固定回复，不做任何补充：
-"抱歉，我只能帮你分析求职申请数据。请提问与你的投递记录相关的问题，例如：'我投了多少家公司？' 或 '哪个地点投递最多？'"
+- Output ONLY the following fixed reply in the same language as the user's message, nothing else:
+  - If the user's message is in English: "Sorry, I can only help you analyze your job application data. Please ask questions related to your applications, e.g. 'How many companies have I applied to?' or 'Which location has the most applications?'"
+  - If the user's message is in Chinese: "抱歉，我只能帮你分析求职申请数据。请提问与你的投递记录相关的问题，例如：'我投了多少家公司？' 或 '哪个地点投递最多？'"
 
 ## 数据库结构
 
@@ -82,14 +83,18 @@ SQL_SYSTEM_PROMPT = """你是一个求职数据分析助手，专门帮助用户
 - 涉及"最多/最少/前N名/排名"等问题时，必须使用 GROUP BY + ORDER BY + LIMIT
 - 只输出原始 SQL 语句本身，不加任何解释、不加 markdown、不加代码块"""
 
-EXPLAIN_SYSTEM_PROMPT = """你是一个求职数据分析助手，根据数据库查询结果用自然语言回答用户的问题。
+EXPLAIN_SYSTEM_PROMPT = """You are a job-search data analyst. Answer the user's question in natural language based on the database query results.
 
-要求：
-- 用中文回答
-- 语言简洁清晰，直接给出结论
-- 如果数据为空，告知用户暂无相关记录
-- 不要重复展示原始数据，用自然语言总结
-- 回答控制在3-5句话以内"""
+Requirements:
+- IMPORTANT: Always respond in the same language the user used to ask their question. If the question is in English, reply in English. If in Chinese, reply in Chinese.
+- Be concise and direct — lead with the conclusion
+- If the result set is empty, tell the user there are no matching records
+- Do not repeat raw data; summarize it naturally
+- Keep the answer to 3-5 sentences"""
+
+def _is_english(text: str) -> bool:
+    chinese = sum(1 for c in text if '一' <= c <= '鿿')
+    return chinese < len(text) * 0.1
 
 limiter = Limiter(key_func=get_remote_address)
 app = FastAPI()
@@ -631,7 +636,10 @@ def chat(request: Request, req: ChatRequest, user_id: int = Depends(get_current_
     finally:
         cur.close(); conn.close()
     if usage > CHAT_DAILY_LIMIT:
-        raise HTTPException(status_code=429, detail=f"今日提问已达上限（{CHAT_DAILY_LIMIT} 次），明天再来吧")
+        eng = _is_english(req.message)
+        detail = (f"Daily limit reached ({CHAT_DAILY_LIMIT} queries). Come back tomorrow!"
+                  if eng else f"今日提问已达上限（{CHAT_DAILY_LIMIT} 次），明天再来吧")
+        raise HTTPException(status_code=429, detail=detail)
 
     client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 
@@ -661,7 +669,9 @@ def chat(request: Request, req: ChatRequest, user_id: int = Depends(get_current_
     # Step 2: 执行 SQL（安全检查）
     err = validate_chat_sql(sql_or_reject, user_id)
     if err:
-        return {"answer": f"生成的查询已被拦截：{err}", "sql": None}
+        eng = _is_english(req.message)
+        msg = f"Generated query was blocked: {err}" if eng else f"生成的查询已被拦截：{err}"
+        return {"answer": msg, "sql": None}
     try:
         conn = get_db()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -674,12 +684,16 @@ def chat(request: Request, req: ChatRequest, user_id: int = Depends(get_current_
                 if hasattr(v, 'isoformat'):
                     r[k] = v.isoformat()
     except Exception as e:
-        return {"answer": f"查询出错：{str(e)}", "sql": sql_or_reject}
+        eng = _is_english(req.message)
+        msg = f"Query error: {str(e)}" if eng else f"查询出错：{str(e)}"
+        return {"answer": msg, "sql": sql_or_reject}
 
     # Step 3: 结果 → 自然语言
+    lang_rule = "You MUST reply in English only." if _is_english(req.message) else "你必须只用中文回答。"
+    explain_system = EXPLAIN_SYSTEM_PROMPT + f"\n\n{lang_rule}"
     explain_messages = [
-        {"role": "system", "content": EXPLAIN_SYSTEM_PROMPT},
-        {"role": "user", "content": f"问题：{req.message}\n\n查询结果：{rows}"}
+        {"role": "system", "content": explain_system},
+        {"role": "user", "content": f"Question: {req.message}\n\nQuery result: {rows}"}
     ]
     explain_resp = client.chat.completions.create(
         model="deepseek-chat", messages=explain_messages, temperature=0.3
