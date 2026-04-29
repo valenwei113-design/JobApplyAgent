@@ -83,14 +83,24 @@ SQL_SYSTEM_PROMPT = """你是一个求职数据分析助手，专门帮助用户
 - 涉及"最多/最少/前N名/排名"等问题时，必须使用 GROUP BY + ORDER BY + LIMIT
 - 只输出原始 SQL 语句本身，不加任何解释、不加 markdown、不加代码块"""
 
-EXPLAIN_SYSTEM_PROMPT = """You are a job-search data analyst. Answer the user's question in natural language based on the database query results.
+EXPLAIN_SYSTEM_PROMPT_EN = """You are a job-search data analyst. Answer the user's question in natural language based on the database query results.
+
+CRITICAL: Respond in ENGLISH ONLY. Do not output any Chinese characters under any circumstances.
 
 Requirements:
-- IMPORTANT: Always respond in the same language the user used to ask their question. If the question is in English, reply in English. If in Chinese, reply in Chinese.
 - Be concise and direct — lead with the conclusion
 - If the result set is empty, tell the user there are no matching records
 - Do not repeat raw data; summarize it naturally
 - Keep the answer to 3-5 sentences"""
+
+EXPLAIN_SYSTEM_PROMPT_ZH = """你是一个求职数据分析助手，根据数据库查询结果用自然语言回答用户的问题。
+
+严格要求：只用中文回答，不得使用英文。
+
+- 语言简洁清晰，直接给出结论
+- 如果数据为空，告知用户暂无相关记录
+- 不要重复展示原始数据，用自然语言总结
+- 回答控制在3-5句话以内"""
 
 def _is_english(text: str) -> bool:
     chinese = sum(1 for c in text if '一' <= c <= '鿿')
@@ -689,11 +699,13 @@ def chat(request: Request, req: ChatRequest, user_id: int = Depends(get_current_
         return {"answer": msg, "sql": sql_or_reject}
 
     # Step 3: 结果 → 自然语言
-    lang_rule = "You MUST reply in English only." if _is_english(req.message) else "你必须只用中文回答。"
-    explain_system = EXPLAIN_SYSTEM_PROMPT + f"\n\n{lang_rule}"
+    eng = _is_english(req.message)
+    explain_system = EXPLAIN_SYSTEM_PROMPT_EN if eng else EXPLAIN_SYSTEM_PROMPT_ZH
+    user_content = (f"Question: {req.message}\n\nQuery result: {rows}" if eng
+                    else f"问题：{req.message}\n\n查询结果：{rows}")
     explain_messages = [
         {"role": "system", "content": explain_system},
-        {"role": "user", "content": f"Question: {req.message}\n\nQuery result: {rows}"}
+        {"role": "user", "content": user_content}
     ]
     explain_resp = client.chat.completions.create(
         model="deepseek-chat", messages=explain_messages, temperature=0.3
