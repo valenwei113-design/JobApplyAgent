@@ -1435,10 +1435,24 @@ function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+const FEEDBACK_KEY = {
+  'No Response': 'fbOptNoResponse',
+  'Fail':            'fbOptFail',
+  'Offer':           'fbOptOffer',
+  'Interview':       'fbOptInterview',
+  'Online Assessment': 'fbOptOA',
+};
+const WORKTYPE_KEY = { Remote: 'optRemote', Onsite: 'optOnsite', Hybrid: 'optHybrid' };
+
 function badgeHtml(feedback) {
-  if (!feedback) return '<span class="app-badge badge-pending">No Response</span>';
-  if (feedback.toLowerCase() === 'fail') return '<span class="app-badge badge-fail">Rejected</span>';
-  return `<span class="app-badge badge-offer">${esc(feedback)}</span>`;
+  if (!feedback || feedback === 'No Response') {
+    return `<span class="app-badge badge-pending">${t('fbOptNoResponse')}</span>`;
+  }
+  if (feedback.toLowerCase() === 'fail') {
+    return `<span class="app-badge badge-fail">${t('fbOptFail')}</span>`;
+  }
+  const key = FEEDBACK_KEY[feedback];
+  return `<span class="app-badge badge-offer">${key ? t(key) : esc(feedback)}</span>`;
 }
 
 function cardHtml(app, isNew = false) {
@@ -1455,7 +1469,7 @@ function cardHtml(app, isNew = false) {
       <span class="col-company">${esc(app.company) || '—'}</span>
       <span class="col-position">${esc(app.position) || '—'}</span>
       <span class="col-location">${esc(app.location) || '—'}</span>
-      <span class="col-worktype">${esc(app.work_type) || '—'}</span>
+      <span class="col-worktype">${app.work_type ? (WORKTYPE_KEY[app.work_type] ? t(WORKTYPE_KEY[app.work_type]) : esc(app.work_type)) : '—'}</span>
       <span class="col-feedback">${badgeHtml(app.feedback)}</span>
       ${app.notes ? `<span title="${esc(app.notes)}" style="font-size:13px;cursor:default;" onclick="event.stopPropagation()">📝</span>` : '<span style="width:18px;display:inline-block;"></span>'}
       <button class="del-btn" onclick="event.stopPropagation(); deleteApplication(${app.id})" title="✕">✕</button>
