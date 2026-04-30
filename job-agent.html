@@ -178,15 +178,15 @@
     .app-card.new-card { animation: slideIn 0.3s ease; }
     @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
 
-    .col-company  { flex: 2; font-size: 13px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
-    .col-position { flex: 2; font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
-    .col-location { flex: 1; font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
-    .col-worktype { flex: 1; font-size: 12px; color: #6b7280; padding-right: 8px; }
-    .col-link     { flex: 1; padding-right: 8px; }
+    .col-company  { flex: 2; min-width: 0; font-size: 13px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 12px; }
+    .col-position { flex: 2; min-width: 0; font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 12px; }
+    .col-location { flex: 1; min-width: 0; font-size: 12px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
+    .col-worktype { flex: 0 0 72px; font-size: 12px; color: #6b7280; padding-right: 8px; }
+    .col-link     { flex: 0 0 52px; padding-right: 8px; }
     .col-link a   { font-size: 12px; color: #6366f1; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; }
     .col-link a:hover { text-decoration: underline; }
-    .col-date     { flex: 1; font-size: 12px; color: #9ca3af; padding-right: 8px; }
-    .col-feedback { flex: 1; }
+    .col-date     { flex: 0 0 88px; font-size: 12px; color: #9ca3af; padding-right: 8px; }
+    .col-feedback { flex: 0 0 110px; }
 
     .app-badge {
       font-size: 11px; font-weight: 500; padding: 3px 8px;
@@ -609,14 +609,14 @@
 
       <!-- Table header -->
       <div class="list-header">
-        <span style="flex:2" data-i18n="colCompany"></span>
-        <span style="flex:2" data-i18n="colPosition"></span>
-        <span style="flex:1" data-i18n="colLocation"></span>
-        <span style="flex:1" data-i18n="colWorkType"></span>
-        <span style="flex:1" data-i18n="colLink"></span>
-        <span style="flex:1;cursor:pointer;user-select:none;" onclick="toggleSort()" id="sortHeader"><span data-i18n="colDate"></span> <span id="sortIcon">↓</span></span>
-        <span style="flex:1" data-i18n="colFeedback"></span>
-        <span style="width:26px;flex-shrink:0"></span>
+        <span style="flex:2;min-width:0" data-i18n="colCompany"></span>
+        <span style="flex:2;min-width:0" data-i18n="colPosition"></span>
+        <span style="flex:1;min-width:0" data-i18n="colLocation"></span>
+        <span style="flex:0 0 72px" data-i18n="colWorkType"></span>
+        <span style="flex:0 0 52px" data-i18n="colLink"></span>
+        <span style="flex:0 0 88px;cursor:pointer;user-select:none;" onclick="toggleSort()" id="sortHeader"><span data-i18n="colDate"></span> <span id="sortIcon">↓</span></span>
+        <span style="flex:0 0 110px" data-i18n="colFeedback"></span>
+        <span style="width:44px;flex-shrink:0"></span>
       </div>
 
       <!-- Applications list -->
