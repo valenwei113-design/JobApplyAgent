@@ -2108,6 +2108,7 @@ if (getToken()) {
 }
 
 function openChangePwd() {
+  applyLang();
   document.getElementById('chpwdMsg').className = 'chpwd-msg';
   document.getElementById('chpwdMsg').textContent = '';
   ['chpwdCurrent','chpwdNew','chpwdConfirm'].forEach(id => document.getElementById(id).value = '');
